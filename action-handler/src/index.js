@@ -1297,24 +1297,24 @@ INSERT INTO org_members (user_id,org_id,role) VALUES
 ON CONFLICT (user_id,org_id) DO NOTHING;
 
 INSERT INTO workflows (id,org_id,name,description,created_by) VALUES
-  ('w1000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-00000000000a','AI Content Pipeline','Generates content with AI, evaluates sentiment, and routes accordingly','a1000000-0000-0000-0000-000000000001'),
-  ('w2000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-00000000000b','Data Processor','Simple data processing workflow','b1000000-0000-0000-0000-000000000001')
+  ('c1000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-00000000000a','AI Content Pipeline','Generates content with AI, evaluates sentiment, and routes accordingly','a1000000-0000-0000-0000-000000000001'),
+  ('c2000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-00000000000b','Data Processor','Simple data processing workflow','b1000000-0000-0000-0000-000000000001')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO workflow_steps (id,workflow_id,step_order,step_type,name,config) VALUES
-  ('s1000000-0000-0000-0000-000000000001','w1000000-0000-0000-0000-000000000001',1,'llm_call','Generate Content','{"prompt":"Write a short product review for a tech gadget. Include a clear sentiment (positive or negative).","model":"default"}'),
-  ('s1000000-0000-0000-0000-000000000002','w1000000-0000-0000-0000-000000000001',2,'conditional_branch','Check Sentiment','{"field":"response","operator":"contains","value":"positive","skip_steps_if_false":1}'),
-  ('s1000000-0000-0000-0000-000000000003','w1000000-0000-0000-0000-000000000001',3,'http_request','Post to API','{"url":"https://httpbin.org/post","method":"POST","headers":{"Content-Type":"application/json"}}'),
-  ('s1000000-0000-0000-0000-000000000004','w1000000-0000-0000-0000-000000000001',4,'approval_gate','Manager Approval','{"required_role":"owner","message":"Please review the generated content before saving."}'),
-  ('s1000000-0000-0000-0000-000000000005','w1000000-0000-0000-0000-000000000001',5,'db_write','Save Result','{"table":"workflow_runs","fields":["output"]}'),
-  ('s2000000-0000-0000-0000-000000000001','w2000000-0000-0000-0000-000000000001',1,'http_request','Fetch Data','{"url":"https://httpbin.org/get","method":"GET"}'),
-  ('s2000000-0000-0000-0000-000000000002','w2000000-0000-0000-0000-000000000001',2,'llm_call','Analyze Data','{"prompt":"Summarize this data briefly","model":"default"}')
+  ('e1000000-0000-0000-0000-000000000001','c1000000-0000-0000-0000-000000000001',1,'llm_call','Generate Content','{"prompt":"Write a short product review for a tech gadget. Include a clear sentiment (positive or negative).","model":"default"}'),
+  ('e1000000-0000-0000-0000-000000000002','c1000000-0000-0000-0000-000000000001',2,'conditional_branch','Check Sentiment','{"field":"response","operator":"contains","value":"positive","skip_steps_if_false":1}'),
+  ('e1000000-0000-0000-0000-000000000003','c1000000-0000-0000-0000-000000000001',3,'http_request','Post to API','{"url":"https://httpbin.org/post","method":"POST","headers":{"Content-Type":"application/json"}}'),
+  ('e1000000-0000-0000-0000-000000000004','c1000000-0000-0000-0000-000000000001',4,'approval_gate','Manager Approval','{"required_role":"owner","message":"Please review the generated content before saving."}'),
+  ('e1000000-0000-0000-0000-000000000005','c1000000-0000-0000-0000-000000000001',5,'db_write','Save Result','{"table":"workflow_runs","fields":["output"]}'),
+  ('e2000000-0000-0000-0000-000000000001','c2000000-0000-0000-0000-000000000001',1,'http_request','Fetch Data','{"url":"https://httpbin.org/get","method":"GET"}'),
+  ('e2000000-0000-0000-0000-000000000002','c2000000-0000-0000-0000-000000000001',2,'llm_call','Analyze Data','{"prompt":"Summarize this data briefly","model":"default"}')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO workflow_triggers (workflow_id,trigger_type,config) VALUES
-  ('w1000000-0000-0000-0000-000000000001','manual','{}'),
-  ('w1000000-0000-0000-0000-000000000001','webhook','{"secret":"whsec_alpha_pipeline_key"}'),
-  ('w2000000-0000-0000-0000-000000000001','manual','{}')
+  ('c1000000-0000-0000-0000-000000000001','manual','{}'),
+  ('c1000000-0000-0000-0000-000000000001','webhook','{"secret":"whsec_alpha_pipeline_key"}'),
+  ('c2000000-0000-0000-0000-000000000001','manual','{}')
 ON CONFLICT DO NOTHING;
 `;
 
