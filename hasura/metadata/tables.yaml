@@ -1,0 +1,364 @@
+# Hasura Table Permissions — AI Agent Workflow Builder
+# Layer 1: Org + Role Scoping via relationship-based filters
+#
+# Every permission filter traverses relationships to org_members
+# to verify the user belongs to the correct org with the required role.
+# This ensures cross-org isolation at the database level.
+
+tables:
+
+  # ===================== users =====================
+  - table:
+      schema: public
+      name: users
+    array_relationships:
+      - name: org_memberships
+        using:
+          foreign_key_constraint_on:
+            column: user_id
+            table:
+              schema: public
+              name: org_members
+    select_permissions:
+      - role: user
+        permission:
+          columns: [id, email, name, created_at]
+          filter:
+            org_memberships:
+              org:
+                org_members:
+                  user_id:
+                    _eq: X-Hasura-User-Id
+
+  # ===================== organizations =====================
+  - table:
+      schema: public
+      name: organizations
+    array_relationships:
+      - name: org_members
+        using:
+          foreign_key_constraint_on:
+            column: org_id
+            table:
+              schema: public
+              name: org_members
+      - name: workflows
+        using:
+          foreign_key_constraint_on:
+            column: org_id
+            table:
+              schema: public
+              name: workflows
+    select_permissions:
+      - role: user
+        permission:
+          columns: [id, name, quota_limit, quota_used, quota_period_start, created_at]
+          filter:
+            org_members:
+              user_id:
+                _eq: X-Hasura-User-Id
+
+  # ===================== org_members =====================
+  - table:
+      schema: public
+      name: org_members
+    object_relationships:
+      - name: user
+        using:
+          foreign_key_constraint_on: user_id
+      - name: org
+        using:
+          foreign_key_constraint_on: org_id
+    select_permissions:
+      - role: user
+        permission:
+          columns: [id, user_id, org_id, role, created_at]
+          filter:
+            org:
+              org_members:
+                user_id:
+                  _eq: X-Hasura-User-Id
+    insert_permissions:
+      - role: user
+        permission:
+          columns: [user_id, org_id, role]
+          check:
+            # Only owners can add members
+            org:
+              org_members:
+                user_id:
+                  _eq: X-Hasura-User-Id
+                role:
+                  _eq: owner
+    update_permissions:
+      - role: user
+        permission:
+          columns: [role]
+          filter:
+            org:
+              org_members:
+                user_id:
+                  _eq: X-Hasura-User-Id
+                role:
+                  _eq: owner
+    delete_permissions:
+      - role: user
+        permission:
+          filter:
+            org:
+              org_members:
+                user_id:
+                  _eq: X-Hasura-User-Id
+                role:
+                  _eq: owner
+
+  # ===================== workflows =====================
+  - table:
+      schema: public
+      name: workflows
+    object_relationships:
+      - name: organization
+        using:
+          foreign_key_constraint_on: org_id
+      - name: creator
+        using:
+          foreign_key_constraint_on: created_by
+    array_relationships:
+      - name: steps
+        using:
+          foreign_key_constraint_on:
+            column: workflow_id
+            table:
+              schema: public
+              name: workflow_steps
+      - name: triggers
+        using:
+          foreign_key_constraint_on:
+            column: workflow_id
+            table:
+              schema: public
+              name: workflow_triggers
+      - name: runs
+        using:
+          foreign_key_constraint_on:
+            column: workflow_id
+            table:
+              schema: public
+              name: workflow_runs
+    select_permissions:
+      - role: user
+        permission:
+          columns: [id, org_id, name, description, created_by, is_active, created_at, updated_at]
+          filter:
+            # Any org member can view workflows
+            organization:
+              org_members:
+                user_id:
+                  _eq: X-Hasura-User-Id
+          allow_aggregations: true
+    insert_permissions:
+      - role: user
+        permission:
+          columns: [org_id, name, description, created_by]
+          check:
+            # Only owner/editor can create workflows
+            organization:
+              org_members:
+                user_id:
+                  _eq: X-Hasura-User-Id
+                role:
+                  _in: [owner, editor]
+    update_permissions:
+      - role: user
+        permission:
+          columns: [name, description, is_active]
+          filter:
+            organization:
+              org_members:
+                user_id:
+                  _eq: X-Hasura-User-Id
+                role:
+                  _in: [owner, editor]
+    delete_permissions:
+      - role: user
+        permission:
+          filter:
+            # Only owner can delete
+            organization:
+              org_members:
+                user_id:
+                  _eq: X-Hasura-User-Id
+                role:
+                  _eq: owner
+
+  # ===================== workflow_steps =====================
+  - table:
+      schema: public
+      name: workflow_steps
+    object_relationships:
+      - name: workflow
+        using:
+          foreign_key_constraint_on: workflow_id
+    array_relationships:
+      - name: step_runs
+        using:
+          foreign_key_constraint_on:
+            column: workflow_step_id
+            table:
+              schema: public
+              name: step_runs
+    select_permissions:
+      - role: user
+        permission:
+          columns: [id, workflow_id, step_order, step_type, name, config, created_at]
+          filter:
+            workflow:
+              organization:
+                org_members:
+                  user_id:
+                    _eq: X-Hasura-User-Id
+    insert_permissions:
+      - role: user
+        permission:
+          columns: [workflow_id, step_order, step_type, name, config]
+          check:
+            workflow:
+              organization:
+                org_members:
+                  user_id:
+                    _eq: X-Hasura-User-Id
+                  role:
+                    _in: [owner, editor]
+    update_permissions:
+      - role: user
+        permission:
+          columns: [step_order, step_type, name, config]
+          filter:
+            workflow:
+              organization:
+                org_members:
+                  user_id:
+                    _eq: X-Hasura-User-Id
+                  role:
+                    _in: [owner, editor]
+    delete_permissions:
+      - role: user
+        permission:
+          filter:
+            workflow:
+              organization:
+                org_members:
+                  user_id:
+                    _eq: X-Hasura-User-Id
+                  role:
+                    _in: [owner, editor]
+
+  # ===================== workflow_triggers =====================
+  - table:
+      schema: public
+      name: workflow_triggers
+    object_relationships:
+      - name: workflow
+        using:
+          foreign_key_constraint_on: workflow_id
+    select_permissions:
+      - role: user
+        permission:
+          columns: [id, workflow_id, trigger_type, config, is_active, created_at]
+          filter:
+            workflow:
+              organization:
+                org_members:
+                  user_id:
+                    _eq: X-Hasura-User-Id
+    insert_permissions:
+      - role: user
+        permission:
+          columns: [workflow_id, trigger_type, config]
+          check:
+            workflow:
+              organization:
+                org_members:
+                  user_id:
+                    _eq: X-Hasura-User-Id
+                  role:
+                    _in: [owner, editor]
+    delete_permissions:
+      - role: user
+        permission:
+          filter:
+            workflow:
+              organization:
+                org_members:
+                  user_id:
+                    _eq: X-Hasura-User-Id
+                  role:
+                    _in: [owner, editor]
+
+  # ===================== workflow_runs =====================
+  - table:
+      schema: public
+      name: workflow_runs
+    object_relationships:
+      - name: workflow
+        using:
+          foreign_key_constraint_on: workflow_id
+      - name: triggered_by_user
+        using:
+          foreign_key_constraint_on: triggered_by
+    array_relationships:
+      - name: step_runs
+        using:
+          foreign_key_constraint_on:
+            column: workflow_run_id
+            table:
+              schema: public
+              name: step_runs
+    select_permissions:
+      - role: user
+        permission:
+          columns: [id, workflow_id, status, triggered_by, trigger_type, error, started_at, completed_at]
+          filter:
+            workflow:
+              organization:
+                org_members:
+                  user_id:
+                    _eq: X-Hasura-User-Id
+          allow_aggregations: true
+
+  # ===================== step_runs =====================
+  - table:
+      schema: public
+      name: step_runs
+    object_relationships:
+      - name: workflow_run
+        using:
+          foreign_key_constraint_on: workflow_run_id
+      - name: workflow_step
+        using:
+          foreign_key_constraint_on: workflow_step_id
+      - name: approver
+        using:
+          foreign_key_constraint_on: approved_by
+    select_permissions:
+      - role: user
+        permission:
+          columns: [id, workflow_run_id, workflow_step_id, step_order, status, input, output, error, attempt_count, approved_by, approved_at, started_at, completed_at]
+          filter:
+            workflow_run:
+              workflow:
+                organization:
+                  org_members:
+                    user_id:
+                      _eq: X-Hasura-User-Id
+          allow_aggregations: true
+
+  # ===================== org_monthly_usage (view) =====================
+  - table:
+      schema: public
+      name: org_monthly_usage
+    select_permissions:
+      - role: user
+        permission:
+          columns: [org_id, org_name, quota_limit, quota_used, total_runs_this_month, avg_run_duration_seconds, completed_runs, failed_runs]
+          filter: {}

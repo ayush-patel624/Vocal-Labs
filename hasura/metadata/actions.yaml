@@ -1,0 +1,46 @@
+# Hasura Actions — AI Agent Workflow Builder
+# These actions are backed by the action-handler service
+
+actions:
+  - name: triggerWorkflowRun
+    definition:
+      kind: synchronous
+      handler: "{{ACTION_HANDLER_ENDPOINT}}/trigger-workflow-run"
+      forward_client_headers: true
+    permissions:
+      - role: user
+
+  - name: approveStep
+    definition:
+      kind: synchronous
+      handler: "{{ACTION_HANDLER_ENDPOINT}}/approve-step"
+      forward_client_headers: true
+    permissions:
+      - role: user
+
+custom_types:
+  input_objects:
+    - name: TriggerWorkflowRunInput
+      fields:
+        - name: workflow_id
+          type: uuid!
+
+    - name: ApproveStepInput
+      fields:
+        - name: step_run_id
+          type: uuid!
+
+  objects:
+    - name: TriggerWorkflowRunOutput
+      fields:
+        - name: workflow_run_id
+          type: String!
+        - name: status
+          type: String!
+
+    - name: ApproveStepOutput
+      fields:
+        - name: success
+          type: Boolean!
+        - name: message
+          type: String!
